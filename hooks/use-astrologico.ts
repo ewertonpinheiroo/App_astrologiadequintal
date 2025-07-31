@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import AstrologicoApiService from '@/lib/astrologico-api';
-import { ChartFormData, ChartResponse, LocationResponse } from '@/types/astrologico';
+import { ChartFormData, ChartResponse, LocationApiResponse } from '@/types/astrologico';
 
 export const useAstrologico = (apiKey?: string) => {
   const [loading, setLoading] = useState(false);
@@ -9,7 +9,7 @@ export const useAstrologico = (apiKey?: string) => {
 
   const apiService = new AstrologicoApiService(apiKey);
 
-  const getLocationCoordinates = useCallback(async (locationName: string): Promise<LocationResponse | null> => {
+  const getLocationCoordinates = useCallback(async (locationName: string): Promise<LocationApiResponse | null> => {
     setLoading(true);
     setError(null);
 
@@ -31,15 +31,23 @@ export const useAstrologico = (apiKey?: string) => {
     setChartData(null);
 
     try {
-      // Primeiro, busca as coordenadas da localização se necessário
-      let coordinates = null;
-      if (formData.location && (!formData.latitude || !formData.longitude)) {
+      let finalLatitude = formData.latitude;
+      let finalLongitude = formData.longitude;
+
+      // Se a localização foi fornecida e as coordenadas não, tenta buscar
+      if (formData.location && (finalLatitude === undefined || finalLongitude === undefined)) {
         const locationResult = await apiService.getLocationCoordinates(formData.location);
-        if (locationResult && locationResult.data && locationResult.data.length > 0) {
-          coordinates = locationResult.data[0];
+        if (locationResult && locationResult.location) {
+          finalLatitude = locationResult.location.lat;
+          finalLongitude = locationResult.location.lng;
         } else {
-          throw new Error('Localização não encontrada');
+          throw new Error('Localização não encontrada ou formato de resposta inválido.');
         }
+      }
+
+      // Verifica se as coordenadas finais são válidas
+      if (finalLatitude === undefined || finalLongitude === undefined) {
+        throw new Error('Coordenadas de latitude e longitude são necessárias.');
       }
 
       // Prepara os dados para o mapa astral
@@ -48,8 +56,8 @@ export const useAstrologico = (apiKey?: string) => {
         birthDate: formData.birthDate,
         birthTime: formData.birthTime,
         location: formData.location,
-        latitude: coordinates ? coordinates.lat : formData.latitude,
-        longitude: coordinates ? coordinates.lng : formData.longitude
+        latitude: finalLatitude,
+        longitude: finalLongitude
       };
 
       // Gera o mapa astral

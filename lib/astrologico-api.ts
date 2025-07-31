@@ -1,4 +1,4 @@
-import { ChartFormData, LocationResponse, ChartResponse, ChartData } from '@/types/astrologico';
+import { ChartFormData, LocationApiResponse, ChartResponse, ChartData } from '@/types/astrologico';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.astrologico.org/v1';
 const API_KEY = process.env.NEXT_PUBLIC_ASTROLOGICO_API_KEY;
@@ -44,17 +44,18 @@ class AstrologicoApiService {
     }
   }
 
-  async getLocationCoordinates(locationName: string): Promise<LocationResponse> {
+  async getLocationCoordinates(locationName: string): Promise<LocationApiResponse> {
     const params = {
       query: locationName
     };
     
-      const result = await this.makeRequest<LocationResponse>("location", params);
-      if (result && result.location) {
-        return { data: [result.location], status: result.status };
-      } else {
-        throw new Error("Localização não encontrada ou formato de resposta inválido.");
-      }
+    const result = await this.makeRequest<LocationApiResponse>('location', params);
+    
+    if (!result || !result.location) {
+      throw new Error('Localização não encontrada ou formato de resposta inválido.');
+    }
+    
+    return result;
   }
 
   async generateChart(chartData: ChartFormData): Promise<ChartResponse> {
@@ -98,7 +99,7 @@ class AstrologicoApiService {
     try {
       // Faz uma requisição simples para testar a API key
       const params = {
-        location: 'São Paulo'
+        query: 'São Paulo'
       };
       
       await this.makeRequest('location', params);

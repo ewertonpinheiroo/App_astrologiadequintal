@@ -15,11 +15,13 @@ export interface LocationData {
   name: string;
   country: string;
   timezone: string;
+  queryResult: string; // Adicionado para corresponder à resposta da API
 }
 
-export interface LocationResponse {
-  data: LocationData[];
+// Interface corrigida para a resposta da API de localização
+export interface LocationApiResponse {
   status: string;
+  location: LocationData; // A API retorna um único objeto 'location'
 }
 
 export interface PlanetData {
