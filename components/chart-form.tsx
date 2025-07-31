@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Clock, MapPin, User, Loader2 } from 'lucide-react';
+import { Calendar, Clock, User, Loader2 } from 'lucide-react';
 import { ChartFormData } from '@/types/astrologico';
+import LocationAutocomplete from '@/components/location-autocomplete';
 
 interface ChartFormProps {
   onSubmit: (data: ChartFormData) => void;
@@ -18,7 +19,9 @@ export default function ChartForm({ onSubmit, loading }: ChartFormProps) {
     name: '',
     birthDate: '',
     birthTime: '',
-    location: ''
+    location: '',
+    latitude: undefined,
+    longitude: undefined
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -29,12 +32,27 @@ export default function ChartForm({ onSubmit, loading }: ChartFormProps) {
     }));
   };
 
+  const handleLocationChange = (location: string, coordinates?: { latitude: number; longitude: number }) => {
+    setFormData(prev => ({
+      ...prev,
+      location,
+      latitude: coordinates?.latitude,
+      longitude: coordinates?.longitude
+    }));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validação básica
     if (!formData.name || !formData.birthDate || !formData.birthTime || !formData.location) {
       alert('Por favor, preencha todos os campos obrigatórios.');
+      return;
+    }
+
+    // Verifica se as coordenadas foram obtidas
+    if (!formData.latitude || !formData.longitude) {
+      alert('Por favor, selecione uma localização válida da lista de sugestões.');
       return;
     }
 
@@ -108,26 +126,21 @@ export default function ChartForm({ onSubmit, loading }: ChartFormProps) {
             </p>
           </div>
 
-          {/* Local de Nascimento */}
-          <div className="space-y-2">
-            <Label htmlFor="location" className="flex items-center gap-2">
-              <MapPin className="w-4 h-4" />
-              Local de Nascimento *
-            </Label>
-            <Input
-              id="location"
-              name="location"
-              type="text"
-              value={formData.location}
-              onChange={handleInputChange}
-              placeholder="Ex: São Paulo, SP, Brasil"
-              className="transition-all duration-200 focus:ring-2 focus:ring-purple-500"
-              required
-            />
-            <p className="text-sm text-muted-foreground">
-              Digite a cidade, estado e país onde você nasceu
-            </p>
-          </div>
+          {/* Local de Nascimento com Autocomplete */}
+          <LocationAutocomplete
+            label="Local de Nascimento"
+            placeholder="Ex: São Paulo, SP, Brasil"
+            value={formData.location}
+            onChange={handleLocationChange}
+            required
+          />
+
+          {/* Informações de Debug (apenas para desenvolvimento) */}
+          {formData.latitude && formData.longitude && (
+            <div className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-800 p-2 rounded">
+              <strong>Coordenadas:</strong> {formData.latitude.toFixed(4)}, {formData.longitude.toFixed(4)}
+            </div>
+          )}
 
           {/* Botão de Submit */}
           <Button 

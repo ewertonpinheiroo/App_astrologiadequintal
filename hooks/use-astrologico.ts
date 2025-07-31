@@ -34,20 +34,20 @@ export const useAstrologico = (apiKey?: string) => {
       let finalLatitude = formData.latitude;
       let finalLongitude = formData.longitude;
 
-      // Se a localização foi fornecida e as coordenadas não, tenta buscar
+      // Se as coordenadas não foram fornecidas (fallback para o método antigo)
       if (formData.location && (finalLatitude === undefined || finalLongitude === undefined)) {
         const locationResult = await apiService.getLocationCoordinates(formData.location);
         if (locationResult && locationResult.location) {
           finalLatitude = locationResult.location.lat;
           finalLongitude = locationResult.location.lng;
         } else {
-          throw new Error('Localização não encontrada ou formato de resposta inválido.');
+          throw new Error('Localização não encontrada. Por favor, selecione uma localização válida da lista de sugestões.');
         }
       }
 
       // Verifica se as coordenadas finais são válidas
       if (finalLatitude === undefined || finalLongitude === undefined) {
-        throw new Error('Coordenadas de latitude e longitude são necessárias.');
+        throw new Error('Coordenadas de latitude e longitude são necessárias. Por favor, selecione uma localização da lista de sugestões.');
       }
 
       // Prepara os dados para o mapa astral
