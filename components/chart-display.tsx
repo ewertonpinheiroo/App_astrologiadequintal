@@ -71,8 +71,7 @@ export default function ChartDisplay({ chartData, userName }: ChartDisplayProps)
                     {getPlanetIcon(planetKey)}
                     <div>
                       <h3 className="font-semibold">{planetName}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {signInfo.degree}°{signInfo.minute}' em {signInfo.sign}
+                      <p className="text-sm text-muted-foreground">                        {signInfo.degree}°{signInfo.minute}&apos; em {signInfo.sign}
                       </p>
                     </div>
                   </div>
