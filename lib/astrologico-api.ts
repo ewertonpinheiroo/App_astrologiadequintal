@@ -4,7 +4,7 @@ import { ChartFormData, LocationApiResponse, ChartResponse, ChartData } from '@/
 const PROXY_BASE_URL = process.env.NEXT_PUBLIC_PROXY_BASE_URL || 'https://y0h0i3cq0kdl.manus.space/api/astrologico';
 
 class AstrologicoApiService {
-  constructor() {
+  constructor( ) {
     // A chave da API agora fica no servidor, não no frontend
   }
 
