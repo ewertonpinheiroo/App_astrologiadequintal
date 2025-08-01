@@ -51,7 +51,8 @@ export default function ChartDisplay({ chartData, userName }: ChartDisplayProps)
   const { data } = chartData;
   const planets = data.planets || {};
   const houses = data.houses || {};
-  const metadata = data.metadata || {};
+  // Solução 1: Type assertion para acessar metadata
+  const metadata = (data as any).metadata || {};
 
   console.log('Planets data:', planets);
   console.log('Houses data:', houses);
@@ -138,12 +139,12 @@ export default function ChartDisplay({ chartData, userName }: ChartDisplayProps)
               {/* Status da API */}
               <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded">
                 <h4 className="font-semibold mb-2">Status da API:</h4>
-                <p><strong>Status:</strong> {chartData.status || data.status || 'N/A'}</p>
+                <p><strong>Status:</strong> {chartData.status || (data as any).status || 'N/A'}</p>
                 <p><strong>Custo:</strong> {chartData.cost || 'N/A'} créditos</p>
               </div>
 
               {/* Metadados */}
-              {metadata && (
+              {metadata && Object.keys(metadata).length > 0 && (
                 <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded">
                   <h4 className="font-semibold mb-2">Metadados:</h4>
                   {metadata.location && (
@@ -340,7 +341,7 @@ export default function ChartDisplay({ chartData, userName }: ChartDisplayProps)
         <CardContent>
           <div className="space-y-2 text-sm">
             {data.location && (
-              <p><strong>Localização:</strong> {data.location.name || 'Não especificada'}</p>
+              <p><strong>Localização:</strong> {(data.location as any).name || 'Não especificada'}</p>
             )}
             {metadata.location && (
               <p><strong>Coordenadas processadas:</strong> {metadata.location.latitude}°, {metadata.location.longitude}°</p>
@@ -351,8 +352,8 @@ export default function ChartDisplay({ chartData, userName }: ChartDisplayProps)
             {metadata.date && (
               <p><strong>Data processada pela API:</strong> {metadata.date.ISO}</p>
             )}
-            {data.timezone && (
-              <p><strong>Fuso Horário:</strong> {data.timezone}</p>
+            {(data as any).timezone && (
+              <p><strong>Fuso Horário:</strong> {(data as any).timezone}</p>
             )}
             <p><strong>Custo da consulta:</strong> {chartData.cost || 'N/A'} créditos</p>
           </div>
