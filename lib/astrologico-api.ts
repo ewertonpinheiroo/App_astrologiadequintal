@@ -1,7 +1,7 @@
 import { ChartFormData, LocationApiResponse, ChartResponse, ChartData } from '@/types/astrologico';
 
 // URL do servidor proxy em produção
-const PROXY_BASE_URL = process.env.NEXT_PUBLIC_PROXY_BASE_URL || 'https://zmhqivcvpnqx.manus.space/api/astrologico';
+const PROXY_BASE_URL = process.env.NEXT_PUBLIC_PROXY_BASE_URL || 'https://y0h0i3cq0kdl.manus.space/api/astrologico';
 
 class AstrologicoApiService {
   constructor() {
