@@ -57,7 +57,8 @@ export default function ChartDisplay({ chartData, userName }: ChartDisplayProps)
 
   // Função para obter o ícone do planeta
   const getPlanetIcon = (planetName: string) => {
-    switch (planetName.toLowerCase()) {
+    const lowerName = planetName.toLowerCase();
+    switch (lowerName) {
       case 'sun':
         return <Sun className="w-5 h-5 text-yellow-500" />;
       case 'moon':
@@ -131,6 +132,17 @@ export default function ChartDisplay({ chartData, userName }: ChartDisplayProps)
                   );
                 }
                 
+                // Verifica se há erro na resposta da API
+                if (planetData.error) {
+                  return (
+                    <div key={planetKey} className="p-4 border rounded-lg bg-red-50 dark:bg-red-950">
+                      <p className="text-red-600">
+                        <strong>{getPlanetNameInPortuguese(planetKey.toLowerCase())}:</strong> {planetData.error}
+                      </p>
+                    </div>
+                  );
+                }
+                
                 if (typeof planetData.longitude !== 'number') {
                   return (
                     <div key={planetKey} className="p-4 border rounded-lg bg-amber-50 dark:bg-amber-950">
@@ -142,7 +154,7 @@ export default function ChartDisplay({ chartData, userName }: ChartDisplayProps)
                 }
                 
                 const signInfo = getAstrologicalSign(planetData.longitude);
-                const planetName = getPlanetNameInPortuguese(planetKey);
+                const planetName = getPlanetNameInPortuguese(planetKey.toLowerCase());
                 
                 return (
                   <div key={planetKey} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">

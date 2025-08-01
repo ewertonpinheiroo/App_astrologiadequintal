@@ -66,8 +66,8 @@ class AstrologicoApiService {
       longitude: longitude,
       // Planetas a serem incluídos no mapa
       planets: [
-        'sun', 'moon', 'mercury', 'venus', 'mars', 
-        'jupiter', 'saturn', 'uranus', 'neptune', 'pluto'
+        'SUN', 'MOON', 'MERCURY', 'VENUS', 'MARS', 
+        'JUPITER', 'SATURN', 'URANUS', 'NEPTUNE', 'PLUTO'
       ],
       // Casas astrológicas
       houses: ['equal'],

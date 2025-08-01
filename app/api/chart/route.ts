@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       date,
       latitude,
       longitude,
-      planets = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto'],
+      planets = ['SUN', 'MOON', 'MERCURY', 'VENUS', 'MARS', 'JUPITER', 'SATURN', 'URANUS', 'NEPTUNE', 'PLUTO'],
       houses = ['equal'],
       display = ['longitude', 'latitude', 'sign', 'house'],
       language = 'pt'
@@ -41,19 +41,20 @@ export async function POST(request: NextRequest) {
 
     const url = new URL(`${API_BASE_URL}/chart`);
     
-    // Adiciona os parâmetros à URL
+    // Adiciona os parâmetros à URL - primeiro teste com timestamp Unix
     url.searchParams.append('date', date.toString());
     url.searchParams.append('lat', latitude.toString());
     url.searchParams.append('lng', longitude.toString());
     url.searchParams.append('planets', planets.join('|'));
-    url.searchParams.append('houses', houses.join('|'));
+    // Removemos houses inicialmente já que sabemos que dá erro
+    // url.searchParams.append('houses', houses.join('|'));
     url.searchParams.append('display', display.join('|'));
     url.searchParams.append('language', language);
     url.searchParams.append('key', API_KEY);
 
     console.log('Calling Astrologico API:', url.toString().replace(API_KEY, 'HIDDEN'));
 
-    const response = await fetch(url.toString(), {
+    let response = await fetch(url.toString(), {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -62,46 +63,48 @@ export async function POST(request: NextRequest) {
 
     console.log('API Response status:', response.status);
 
+    // Se der erro, tenta com formato de data diferente
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('First attempt failed:', errorText);
+      
+      // Tenta converter timestamp para formato ISO
+      const isoDate = new Date(date * 1000).toISOString();
+      console.log('Trying with ISO date:', isoDate);
+      
+      url.searchParams.set('date', isoDate);
+      response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        // Tenta com formato YYYY-MM-DD HH:MM:SS
+        const dateObj = new Date(date * 1000);
+        const formattedDate = dateObj.getUTCFullYear() + '-' + 
+                            String(dateObj.getUTCMonth() + 1).padStart(2, '0') + '-' + 
+                            String(dateObj.getUTCDate()).padStart(2, '0') + ' ' +
+                            String(dateObj.getUTCHours()).padStart(2, '0') + ':' +
+                            String(dateObj.getUTCMinutes()).padStart(2, '0') + ':' +
+                            String(dateObj.getUTCSeconds()).padStart(2, '0');
+        
+        console.log('Trying with formatted date:', formattedDate);
+        url.searchParams.set('date', formattedDate);
+        
+        response = await fetch(url.toString(), {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+      }
+    }
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error('API Error Response:', errorText);
-      
-      // Se o erro for de sistema de casas inválido, tenta com 'whole'
-      if (errorText.includes('invalid house system') && houses[0] !== 'whole') {
-        console.log('Trying with whole house system...');
-        url.searchParams.set('houses', 'whole');
-        
-        const retryResponse = await fetch(url.toString(), {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        if (retryResponse.ok) {
-          const retryData = await retryResponse.json();
-          console.log('Success with whole house system');
-          return NextResponse.json(retryData);
-        }
-        
-        // Se ainda falhar, tenta sem o parâmetro houses
-        console.log('Trying without houses parameter...');
-        url.searchParams.delete('houses');
-        
-        const finalResponse = await fetch(url.toString(), {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        if (finalResponse.ok) {
-          const finalData = await finalResponse.json();
-          console.log('Success without houses parameter');
-          return NextResponse.json(finalData);
-        }
-      }
-      
       throw new Error(`API Error: ${response.status} - ${response.statusText} - ${errorText}`);
     }
 
