@@ -70,7 +70,7 @@ class AstrologicoApiService {
         'jupiter', 'saturn', 'uranus', 'neptune', 'pluto'
       ],
       // Casas astrológicas
-      houses: ['placidus'],
+      houses: ['equal'],
       // Opções de exibição
       display: ['longitude', 'latitude', 'sign', 'house'],
       // Idioma
