@@ -7,7 +7,7 @@ export const useAstrologico = (apiKey?: string) => {
   const [error, setError] = useState<string | null>(null);
   const [chartData, setChartData] = useState<ChartResponse | null>(null);
 
-  const apiService = new AstrologicoApiService(apiKey);
+ const apiService = new AstrologicoApiService();
 
   const getLocationCoordinates = useCallback(async (locationName: string): Promise<LocationApiResponse | null> => {
     setLoading(true);
