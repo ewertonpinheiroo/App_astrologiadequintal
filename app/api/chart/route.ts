@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
         lat: latitude.toString(),
         lng: longitude.toString(),
         planets: 'SUN,MOON,MERCURY,VENUS,MARS,JUPITER,SATURN,URANUS,NEPTUNE,PLUTO',
-        display: 'longitude,sign,house', // Keep house in display for consistency
+        display: 'longitude,sign', // Updated to remove 'house' from display
         language: 'pt',
         key: apiKey
       });

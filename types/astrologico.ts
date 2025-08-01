@@ -39,12 +39,20 @@ export interface HouseData {
   latitude: number;
 }
 
+// New Metadata interface
+export interface Metadata {
+  location?: { latitude: number; longitude: number };
+  date?: { ISO: string; UNIX: number };
+  [key: string]: any; // Allow additional properties
+}
+
 export interface ChartData {
   planets: Record<string, PlanetData>;
   houses: Record<string, HouseData>;
   date: number;
   location: LocationData;
   timezone: string;
+  metadata?: Metadata; // Updated to use the new Metadata interface
 }
 
 export interface ChartResponse {
@@ -59,7 +67,7 @@ export interface AstrologicalSign {
   minute: number;
 }
 
-// New interface for ChartDisplay props
+// Interface for ChartDisplay props
 export interface ChartDisplayProps {
   chartData: ChartResponse;
   userName: string;

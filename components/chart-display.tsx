@@ -47,7 +47,7 @@ export default function ChartDisplay({ chartData, userName }: ChartDisplayProps)
   const { data } = chartData;
   const planets = data.planets || {};
   const houses = data.houses || {};
-  const metadata = (data as any).metadata || {};
+  const metadata = data.metadata || {};
 
   console.log('Planets data:', planets);
   console.log('Houses data:', houses);
@@ -82,9 +82,9 @@ export default function ChartDisplay({ chartData, userName }: ChartDisplayProps)
     }
   };
 
-  // Check for errors only if planets data exists and has errors
-  const hasErrors = planets && Object.values(planets).some(planet => 
-    planet && typeof planet === 'object' && 'error' in planet
+  // Refined error checking: Only flag errors if planets have explicit 'error' fields
+  const hasErrors = Object.values(planets).some(planet =>
+    planet && typeof planet === 'object' && 'error' in planet && typeof (planet as any).error === 'string'
   );
 
   return (
@@ -111,7 +111,7 @@ export default function ChartDisplay({ chartData, userName }: ChartDisplayProps)
               <h3 className="font-semibold">Problema na geração do mapa astral</h3>
             </div>
             <div className="text-sm text-red-700 dark:text-red-300 space-y-2">
-              <p>A API retornou erros para todos os planetas. Possíveis causas:</p>
+              <p>A API retornou erros para alguns planetas. Possíveis causas:</p>
               <ul className="list-disc list-inside space-y-1 ml-4">
                 <li><strong>Data incorreta:</strong> Verifique se o timestamp está correto</li>
                 <li><strong>Localização inválida:</strong> Coordenadas podem estar incorretas</li>
@@ -133,7 +133,7 @@ export default function ChartDisplay({ chartData, userName }: ChartDisplayProps)
             <div className="mt-4 space-y-4 text-xs text-blue-700 dark:text-blue-300">
               <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded">
                 <h4 className="font-semibold mb-2">Status da API:</h4>
-                <p><strong>Status:</strong> {chartData.status || (data as any).status || 'N/A'}</p>
+                <p><strong>Status:</strong> {chartData.status || 'N/A'}</p>
                 <p><strong>Custo:</strong> {chartData.cost || 'N/A'} créditos</p>
               </div>
               {metadata && Object.keys(metadata).length > 0 && (
@@ -328,7 +328,7 @@ export default function ChartDisplay({ chartData, userName }: ChartDisplayProps)
         <CardContent>
           <div className="space-y-2 text-sm">
             {data.location && (
-              <p><strong>Localização:</strong> {(data.location as any).name || 'Não especificada'}</p>
+              <p><strong>Localização:</strong> {data.location.name || 'Não especificada'}</p>
             )}
             {metadata.location && (
               <p><strong>Coordenadas processadas:</strong> {metadata.location.latitude}°, {metadata.location.longitude}°</p>
@@ -339,8 +339,8 @@ export default function ChartDisplay({ chartData, userName }: ChartDisplayProps)
             {metadata.date && (
               <p><strong>Data processada pela API:</strong> {metadata.date.ISO}</p>
             )}
-            {(data as any).timezone && (
-              <p><strong>Fuso Horário:</strong> {(data as any).timezone}</p>
+            {data.timezone && (
+              <p><strong>Fuso Horário:</strong> {data.timezone}</p>
             )}
             <p><strong>Custo da consulta:</strong> {chartData.cost || 'N/A'} créditos</p>
           </div>
