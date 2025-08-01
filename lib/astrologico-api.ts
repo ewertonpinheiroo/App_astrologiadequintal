@@ -1,40 +1,27 @@
-import { ChartFormData, LocationApiResponse, ChartResponse, ChartData } from '@/types/astrologico';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.astrologico.org/v1';
-const API_KEY = process.env.NEXT_PUBLIC_ASTROLOGICO_API_KEY;
+// lib/astrologico-api.ts - Versão atualizada para usar rotas internas
+import { ChartFormData, LocationApiResponse, ChartResponse } from '@/types/astrologico';
 
 class AstrologicoApiService {
-  private apiKey: string;
+  private baseUrl: string;
 
-  constructor(apiKey?: string) {
-    this.apiKey = apiKey || API_KEY || '';
+  constructor() {
+    // Usa as rotas internas da aplicação ao invés da API externa diretamente
+    this.baseUrl = '/api';
   }
 
-  private async makeRequest<T>(endpoint: string, params: Record<string, any> = {}): Promise<T> {
+  private async makeRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     try {
-      const url = new URL(`${API_BASE_URL}/${endpoint}`);
-      
-      // Adiciona a API key aos parâmetros
-      params.key = this.apiKey;
-      
-      // Adiciona os parâmetros à URL
-      Object.keys(params).forEach(key => {
-        if (Array.isArray(params[key])) {
-          url.searchParams.append(key, params[key].join('|'));
-        } else {
-          url.searchParams.append(key, params[key]);
-        }
-      });
-
-      const response = await fetch(url.toString(), {
-        method: 'GET',
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
         headers: {
           'Content-Type': 'application/json',
+          ...options.headers,
         },
+        ...options,
       });
 
       if (!response.ok) {
-        throw new Error(`Erro na API: ${response.status} - ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Erro na API: ${response.status} - ${response.statusText}`);
       }
 
       return await response.json();
@@ -45,11 +32,11 @@ class AstrologicoApiService {
   }
 
   async getLocationCoordinates(locationName: string): Promise<LocationApiResponse> {
-    const params = {
+    const params = new URLSearchParams({
       query: locationName
-    };
+    });
     
-    const result = await this.makeRequest<LocationApiResponse>('location', params);
+    const result = await this.makeRequest<LocationApiResponse>(`/location?${params.toString()}`);
     
     if (!result || !result.location) {
       throw new Error('Localização não encontrada ou formato de resposta inválido.');
@@ -60,10 +47,8 @@ class AstrologicoApiService {
 
   async generateChart(chartData: ChartFormData): Promise<ChartResponse> {
     const {
-      name,
       birthDate,
       birthTime,
-      location,
       latitude,
       longitude
     } = chartData;
@@ -73,12 +58,12 @@ class AstrologicoApiService {
     const [hours, minutes] = birthTime.split(':');
     date.setHours(parseInt(hours), parseInt(minutes));
 
-    const params = {
+    const requestBody = {
       // Data no formato timestamp Unix
       date: Math.floor(date.getTime() / 1000),
       // Coordenadas geográficas
-      lat: latitude,
-      lng: longitude,
+      latitude: latitude,
+      longitude: longitude,
       // Planetas a serem incluídos no mapa
       planets: [
         'sun', 'moon', 'mercury', 'venus', 'mars', 
@@ -92,20 +77,23 @@ class AstrologicoApiService {
       language: 'pt'
     };
 
-    return await this.makeRequest<ChartResponse>('chart', params);
+    return await this.makeRequest<ChartResponse>('/chart', {
+      method: 'POST',
+      body: JSON.stringify(requestBody)
+    });
   }
 
   async validateApiKey(): Promise<boolean> {
     try {
-      // Faz uma requisição simples para testar a API key
-      const params = {
+      // Faz uma requisição simples para testar a conectividade
+      const params = new URLSearchParams({
         query: 'São Paulo'
-      };
+      });
       
-      await this.makeRequest('location', params);
+      await this.makeRequest(`/location?${params.toString()}`);
       return true;
     } catch (error) {
-      console.error('API key inválida:', error);
+      console.error('Erro na validação:', error);
       return false;
     }
   }
