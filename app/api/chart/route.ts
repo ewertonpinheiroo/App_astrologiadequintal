@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        const planets = data.planets || {};
+        const planets: Record<string, any> = data.planets || {};
         const hasValidPlanets = Object.keys(planets).length > 0;
 
         if (!hasValidPlanets) {
@@ -119,20 +119,39 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
+        // CORREÇÃO: Verificar planetas válidos ao invés de todos os planetas
         const planetErrors = Object.values(planets).filter(planet => 
           planet && typeof planet === 'object' && 'error' in planet
         );
 
-        const allPlanetsHaveErrors = planetErrors.length === Object.keys(planets).length;
+        const validPlanets = Object.values(planets).filter(planet => 
+          planet && typeof planet === 'object' && !('error' in planet)
+        );
 
-        if (allPlanetsHaveErrors) {
-          console.error('All planets returned errors:', planets);
+        // Aceitar se pelo menos 8 planetas (maioria) estão válidos
+        const hasEnoughValidPlanets = validPlanets.length >= 8;
+
+        if (!hasEnoughValidPlanets) {
+          console.error('Not enough valid planets:', {
+            total: Object.keys(planets).length,
+            valid: validPlanets.length,
+            errors: planetErrors.length,
+            planetErrors: planetErrors
+          });
           continue;
         }
 
+        // Filtrar apenas planetas válidos para a resposta
+        const validPlanetsData: Record<string, any> = {};
+        Object.entries(planets).forEach(([planetName, planetData]) => {
+          if (planetData && typeof planetData === 'object' && !('error' in planetData)) {
+            validPlanetsData[planetName] = planetData;
+          }
+        });
+
         const formattedResponse = {
           data: {
-            planets: planets,
+            planets: validPlanetsData,
             houses: data.houses || {},
             date: date,
             location: {
@@ -144,10 +163,12 @@ export async function POST(req: NextRequest) {
             houseParam: param
           },
           status: data.status || 'OK',
-          cost: data.cost || 0
+          cost: data.cost || 0,
+          warning: planetErrors.length > 0 ? `Alguns planetas não disponíveis: ${Object.keys(planets).filter(p => planets[p]?.error).join(', ')}` : undefined
         };
 
         console.log(`Sistema de casas ${param}=${value} funcionou perfeitamente!`);
+        console.log(`Planetas válidos: ${Object.keys(validPlanetsData).length}/${Object.keys(planets).length}`);
         return NextResponse.json(formattedResponse);
 
       } catch (error) {
@@ -192,16 +213,39 @@ export async function POST(req: NextRequest) {
         const data = await response.json();
         console.log('Sucesso sem sistema de casas!');
         
-        const planets = data.planets || {};
+        const planets: Record<string, any> = data.planets || {};
         const hasValidPlanets = Object.keys(planets).length > 0;
         
         if (!hasValidPlanets) {
           throw new Error('Nenhum dado de planeta recebido mesmo sem sistema de casas');
         }
 
+        // Aplicar a mesma lógica de validação para o fallback
+        const planetErrors = Object.values(planets).filter(planet => 
+          planet && typeof planet === 'object' && 'error' in planet
+        );
+
+        const validPlanets = Object.values(planets).filter(planet => 
+          planet && typeof planet === 'object' && !('error' in planet)
+        );
+
+        const hasEnoughValidPlanets = validPlanets.length >= 8;
+
+        if (!hasEnoughValidPlanets) {
+          throw new Error(`Não há planetas válidos suficientes: ${validPlanets.length}/10`);
+        }
+
+        // Filtrar apenas planetas válidos para a resposta
+        const validPlanetsData: Record<string, any> = {};
+        Object.entries(planets).forEach(([planetName, planetData]) => {
+          if (planetData && typeof planetData === 'object' && !('error' in planetData)) {
+            validPlanetsData[planetName] = planetData;
+          }
+        });
+
         return NextResponse.json({
           data: {
-            planets: planets,
+            planets: validPlanetsData,
             houses: {},
             date: date,
             location: {
@@ -213,7 +257,9 @@ export async function POST(req: NextRequest) {
           },
           status: data.status || 'OK',
           cost: data.cost || 0,
-          warning: 'Executado sem sistema de casas'
+          warning: planetErrors.length > 0 ? 
+            `Executado sem sistema de casas. Alguns planetas não disponíveis: ${Object.keys(planets).filter(p => planets[p]?.error).join(', ')}` : 
+            'Executado sem sistema de casas'
         });
       } else {
         const errorText = await response.text();
