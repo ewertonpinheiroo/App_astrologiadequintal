@@ -107,6 +107,7 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json();
     console.log('API Response data keys:', Object.keys(data));
+    console.log('API Response full data:', JSON.stringify(data, null, 2));
     
     return NextResponse.json(data);
   } catch (error) {
