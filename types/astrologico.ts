@@ -1,3 +1,4 @@
+// types/astrologico.ts
 // Tipos para a API do Astrológico
 
 export interface ChartFormData {
@@ -56,4 +57,10 @@ export interface AstrologicalSign {
   sign: string;
   degree: number;
   minute: number;
+}
+
+// New interface for ChartDisplay props
+export interface ChartDisplayProps {
+  chartData: ChartResponse;
+  userName: string;
 }

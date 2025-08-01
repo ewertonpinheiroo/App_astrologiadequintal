@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // CORREÇÃO 8: Tentativa final sem casas com parâmetros corretos
+    // CORREÇÃO 8: Tentativa final sem casas com parâmetros corrigidos
     console.error('Nenhum sistema de casas funcionou, tentando sem casas...');
     
     try {
@@ -158,10 +158,8 @@ export async function POST(req: NextRequest) {
         date: date.toString(),
         lat: latitude.toString(),
         lng: longitude.toString(),
-        // CORREÇÃO 9: Usar vírgulas ao invés de pipes
         planets: 'SUN,MOON,MERCURY,VENUS,MARS,JUPITER,SATURN,URANUS,NEPTUNE,PLUTO',
-        // Sem houses
-        display: 'longitude,sign', // Sem house no display
+        display: 'longitude,sign,house', // Keep house in display for consistency
         language: 'pt',
         key: apiKey
       });

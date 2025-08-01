@@ -1,15 +1,11 @@
+// components/chart-display.tsx
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Star, Sun, Moon, Globe, AlertCircle, MapPin, Calendar, Clock } from 'lucide-react';
-import { ChartResponse } from '@/types/astrologico';
+import { ChartResponse, ChartDisplayProps } from '@/types/astrologico';
 import { getAstrologicalSign, getPlanetNameInPortuguese, formatDateTime } from '@/lib/utils';
-
-interface ChartDisplayProps {
-  chartData: ChartResponse;
-  userName: string;
-}
 
 export default function ChartDisplay({ chartData, userName }: ChartDisplayProps) {
   console.log('ChartDisplay received data:', chartData);
@@ -51,7 +47,6 @@ export default function ChartDisplay({ chartData, userName }: ChartDisplayProps)
   const { data } = chartData;
   const planets = data.planets || {};
   const houses = data.houses || {};
-  // Solução 1: Type assertion para acessar metadata
   const metadata = (data as any).metadata || {};
 
   console.log('Planets data:', planets);
@@ -87,8 +82,8 @@ export default function ChartDisplay({ chartData, userName }: ChartDisplayProps)
     }
   };
 
-  // Verifica se há erros nos dados dos planetas
-  const hasErrors = Object.values(planets).some(planet => 
+  // Check for errors only if planets data exists and has errors
+  const hasErrors = planets && Object.values(planets).some(planet => 
     planet && typeof planet === 'object' && 'error' in planet
   );
 
@@ -102,6 +97,7 @@ export default function ChartDisplay({ chartData, userName }: ChartDisplayProps)
           </CardTitle>
           <CardDescription className="text-lg">
             {hasErrors ? 'Erro ao gerar o mapa astral' : 'Seu mapa astral personalizado foi gerado com sucesso'}
+            {!houses || Object.keys(houses).length === 0 ? ' (sem dados de casas astrológicas)' : ''}
           </CardDescription>
         </CardHeader>
       </Card>
@@ -135,15 +131,11 @@ export default function ChartDisplay({ chartData, userName }: ChartDisplayProps)
               Informações de Debug (clique para expandir)
             </summary>
             <div className="mt-4 space-y-4 text-xs text-blue-700 dark:text-blue-300">
-              
-              {/* Status da API */}
               <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded">
                 <h4 className="font-semibold mb-2">Status da API:</h4>
                 <p><strong>Status:</strong> {chartData.status || (data as any).status || 'N/A'}</p>
                 <p><strong>Custo:</strong> {chartData.cost || 'N/A'} créditos</p>
               </div>
-
-              {/* Metadados */}
               {metadata && Object.keys(metadata).length > 0 && (
                 <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded">
                   <h4 className="font-semibold mb-2">Metadados:</h4>
@@ -158,16 +150,12 @@ export default function ChartDisplay({ chartData, userName }: ChartDisplayProps)
                   )}
                 </div>
               )}
-
-              {/* Contagem de dados */}
               <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded">
                 <h4 className="font-semibold mb-2">Dados recebidos:</h4>
                 <p><strong>Planetas encontrados:</strong> {Object.keys(planets).length}</p>
                 <p><strong>Casas encontradas:</strong> {Object.keys(houses).length}</p>
                 <p><strong>Planetas com erro:</strong> {Object.values(planets).filter(p => p && typeof p === 'object' && 'error' in p).length}</p>
               </div>
-
-              {/* Dados completos */}
               <details className="p-3 bg-blue-100 dark:bg-blue-900 rounded">
                 <summary className="cursor-pointer font-semibold">Ver dados completos da API</summary>
                 <pre className="mt-2 p-2 bg-blue-200 dark:bg-blue-800 rounded overflow-auto max-h-60 text-xs">
@@ -209,7 +197,6 @@ export default function ChartDisplay({ chartData, userName }: ChartDisplayProps)
                   );
                 }
                 
-                // Verifica se há erro na resposta da API (type-safe check)
                 if ('error' in planetData && typeof (planetData as any).error === 'string') {
                   return (
                     <div key={planetKey} className="p-4 border rounded-lg bg-red-50 dark:bg-red-950">
