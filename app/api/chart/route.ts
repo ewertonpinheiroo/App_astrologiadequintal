@@ -1,4 +1,4 @@
-// api/chart/route.ts - Com múltiplas opções de sistemas de casas
+// api/chart/route.ts - Versão corrigida com base nos problemas identificados
 
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -31,14 +31,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Sistemas de casas para tentar em ordem de preferência
+    // CORREÇÃO 1: Sistemas de casas válidos baseados na documentação
     const houseSystems = [
-      'placidus',     // Mais comum
-      'koch',         // Alternativa popular
-      'equal',        // Casas iguais (pode ser aceito)
-      'whole-sign',   // Casas por signos completos
-      'campanus',     // Sistema Campanus
-      'regiomontanus' // Sistema Regiomontanus
+      'placidus',
+      'koch', 
+      'equal',
+      'whole_sign',    // mudança: underline ao invés de hífen
+      'campanus',
+      'regiomontanus'
     ];
 
     let lastError = null;
@@ -48,14 +48,16 @@ export async function POST(req: NextRequest) {
       try {
         console.log(`Tentando sistema de casas: ${houseSystem}`);
         
-        // Construir URL com sistema de casas atual
+        // CORREÇÃO 2: Parâmetros corrigidos baseados na análise
         const params = new URLSearchParams({
           date: date.toString(),
           lat: latitude.toString(),
           lng: longitude.toString(),
-          planets: 'SUN|MOON|MERCURY|VENUS|MARS|JUPITER|SATURN|URANUS|NEPTUNE|PLUTO',
+          // CORREÇÃO 3: Usar vírgulas ao invés de pipes (|)
+          planets: 'SUN,MOON,MERCURY,VENUS,MARS,JUPITER,SATURN,URANUS,NEPTUNE,PLUTO',
           houses: houseSystem,
-          display: 'longitude|latitude|sign|house',
+          // CORREÇÃO 4: Simplificar display - remover 'latitude' que pode estar causando problemas
+          display: 'longitude,sign,house',
           language: 'pt',
           key: apiKey
         });
@@ -68,7 +70,9 @@ export async function POST(req: NextRequest) {
           headers: {
             'Accept': 'application/json',
             'User-Agent': 'Mapa-Astral-App/1.0'
-          }
+          },
+          // CORREÇÃO 5: Adicionar timeout
+          signal: AbortSignal.timeout(10000) // 10 segundos timeout
         });
 
         console.log(`API Response status for ${houseSystem}:`, response.status);
@@ -83,61 +87,54 @@ export async function POST(req: NextRequest) {
         if (!response.ok) {
           const errorText = await response.text();
           console.error('API Error Response:', errorText);
-          return NextResponse.json(
-            { error: `API returned ${response.status}: ${errorText}` },
-            { status: response.status }
-          );
+          lastError = errorText;
+          continue; // Tenta próximo sistema ao invés de retornar erro
         }
 
         const data = await response.json();
         console.log(`Sucesso com sistema ${houseSystem}!`);
         console.log('API Response data keys:', Object.keys(data));
 
-        // Verificar se a resposta tem a estrutura esperada
-        if (!data.planets) {
+        // CORREÇÃO 6: Melhor validação da estrutura da resposta
+        if (!data || typeof data !== 'object') {
           console.error('Invalid API response structure:', data);
           continue;
         }
 
+        // Verificar se há dados de planetas
+        const planets = data.planets || {};
+        const hasValidPlanets = Object.keys(planets).length > 0;
+
+        if (!hasValidPlanets) {
+          console.error('No planets data received:', data);
+          continue;
+        }
+
         // Verificar se todos os planetas têm erro
-        const planets = data.planets;
-        const hasErrors = Object.values(planets).every(planet => 
+        const planetErrors = Object.values(planets).filter(planet => 
           planet && typeof planet === 'object' && 'error' in planet
         );
 
-        if (hasErrors) {
+        const allPlanetsHaveErrors = planetErrors.length === Object.keys(planets).length;
+
+        if (allPlanetsHaveErrors) {
           console.error('All planets returned errors:', planets);
-          // Ainda retorna os dados para debug, mas com aviso
-          return NextResponse.json({
-            data: {
-              planets: planets,
-              houses: data.houses || {},
-              date: date,
-              location: {
-                latitude: latitude,
-                longitude: longitude
-              },
-              metadata: data.metadata,
-              houseSystem: houseSystem // Indica qual sistema foi usado
-            },
-            status: 'ERROR_ALL_PLANETS',
-            cost: 0,
-            error: 'All planets returned errors - check API parameters'
-          });
+          // Continue tentando outros sistemas ao invés de retornar erro
+          continue;
         }
 
-        // Formatar resposta de sucesso
+        // CORREÇÃO 7: Resposta de sucesso formatada corretamente
         const formattedResponse = {
           data: {
-            planets: data.planets,
+            planets: planets,
             houses: data.houses || {},
             date: date,
             location: {
               latitude: latitude,
               longitude: longitude
             },
-            metadata: data.metadata,
-            houseSystem: houseSystem // Indica qual sistema funcionou
+            metadata: data.metadata || {},
+            houseSystem: houseSystem
           },
           status: data.status || 'OK',
           cost: data.cost || 0
@@ -148,23 +145,23 @@ export async function POST(req: NextRequest) {
 
       } catch (error) {
         console.error(`Erro ao tentar sistema ${houseSystem}:`, error);
-        lastError = error;
+        lastError = error instanceof Error ? error.message : 'Erro desconhecido';
         continue;
       }
     }
 
-    // Se chegou aqui, nenhum sistema funcionou
+    // CORREÇÃO 8: Tentativa final sem casas com parâmetros corretos
     console.error('Nenhum sistema de casas funcionou, tentando sem casas...');
     
-    // Última tentativa: sem sistema de casas
     try {
       const params = new URLSearchParams({
         date: date.toString(),
         lat: latitude.toString(),
         lng: longitude.toString(),
-        planets: 'SUN|MOON|MERCURY|VENUS|MARS|JUPITER|SATURN|URANUS|NEPTUNE|PLUTO',
+        // CORREÇÃO 9: Usar vírgulas ao invés de pipes
+        planets: 'SUN,MOON,MERCURY,VENUS,MARS,JUPITER,SATURN,URANUS,NEPTUNE,PLUTO',
         // Sem houses
-        display: 'longitude|latitude|sign', // Sem house no display
+        display: 'longitude,sign', // Sem house no display
         language: 'pt',
         key: apiKey
       });
@@ -177,40 +174,61 @@ export async function POST(req: NextRequest) {
         headers: {
           'Accept': 'application/json',
           'User-Agent': 'Mapa-Astral-App/1.0'
-        }
+        },
+        signal: AbortSignal.timeout(10000)
       });
 
       if (response.ok) {
         const data = await response.json();
         console.log('Sucesso sem sistema de casas!');
         
+        // Verificar se temos dados de planetas válidos
+        const planets = data.planets || {};
+        const hasValidPlanets = Object.keys(planets).length > 0;
+        
+        if (!hasValidPlanets) {
+          throw new Error('Nenhum dado de planeta recebido mesmo sem sistema de casas');
+        }
+
         return NextResponse.json({
           data: {
-            planets: data.planets || {},
+            planets: planets,
             houses: {}, // Vazio pois não foi solicitado
             date: date,
             location: {
               latitude: latitude,
               longitude: longitude
             },
-            metadata: data.metadata,
-            houseSystem: 'none' // Indica que não há sistema de casas
+            metadata: data.metadata || {},
+            houseSystem: 'none'
           },
           status: data.status || 'OK',
           cost: data.cost || 0,
           warning: 'Executado sem sistema de casas'
         });
+      } else {
+        const errorText = await response.text();
+        throw new Error(`Final attempt failed: ${response.status} - ${errorText}`);
       }
     } catch (finalError) {
       console.error('Erro final:', finalError);
+      lastError = finalError instanceof Error ? finalError.message : 'Erro final desconhecido';
     }
 
-    // Se tudo falhou
+    // CORREÇÃO 10: Resposta de erro mais informativa
     return NextResponse.json(
       { 
-        error: 'All house systems failed',
-        lastError: lastError,
-        triedSystems: houseSystems
+        error: 'Falha ao gerar mapa astral com todos os sistemas tentados',
+        details: {
+          lastError: lastError,
+          triedSystems: houseSystems,
+          suggestions: [
+            'Verifique se a API key está válida e ativa',
+            'Confirme se as coordenadas estão corretas',
+            'Verifique se a data está no formato UNIX timestamp correto',
+            'Tente com uma data e localização diferentes para teste'
+          ]
+        }
       },
       { status: 400 }
     );
@@ -218,7 +236,10 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Chart API error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Erro interno do servidor',
+        details: error instanceof Error ? error.message : 'Erro desconhecido'
+      },
       { status: 500 }
     );
   }
