@@ -133,11 +133,11 @@ export default function ChartDisplay({ chartData, userName }: ChartDisplayProps)
                 }
                 
                 // Verifica se há erro na resposta da API (type-safe check)
-                if ('error' in planetData && planetData.error) {
+                if ('error' in planetData && typeof (planetData as any).error === 'string') {
                   return (
                     <div key={planetKey} className="p-4 border rounded-lg bg-red-50 dark:bg-red-950">
                       <p className="text-red-600">
-                        <strong>{getPlanetNameInPortuguese(planetKey.toLowerCase())}:</strong> {planetData.error}
+                        <strong>{getPlanetNameInPortuguese(planetKey.toLowerCase())}:</strong> {(planetData as any).error}
                       </p>
                     </div>
                   );
