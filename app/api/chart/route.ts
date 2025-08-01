@@ -1,123 +1,132 @@
-// app/api/chart/route.ts
+// api/chart/route.ts - Versão corrigida
+
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_BASE_URL = 'https://api.astrologico.org/v1';
-const API_KEY = process.env.ASTROLOGICO_API_KEY;
-
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   console.log('Chart API called');
-  console.log('API_KEY exists:', !!API_KEY);
-  
-  if (!API_KEY) {
-    console.error('API key not configured');
-    return NextResponse.json(
-      { error: 'API key not configured' },
-      { status: 500 }
-    );
-  }
 
   try {
-    const body = await request.json();
+    const body = await req.json();
     console.log('Request body:', body);
-    
-    const {
-      date,
-      latitude,
-      longitude,
-      planets = ['SUN', 'MOON', 'MERCURY', 'VENUS', 'MARS', 'JUPITER', 'SATURN', 'URANUS', 'NEPTUNE', 'PLUTO'],
-      houses = ['equal'],
-      display = ['longitude', 'latitude', 'sign', 'house'],
-      language = 'pt'
-    } = body;
 
-    // Validação dos parâmetros obrigatórios
-    if (!date || latitude === undefined || longitude === undefined) {
-      console.error('Missing required parameters:', { date, latitude, longitude });
+    const apiKey = process.env.ASTROLOGICO_API_KEY;
+    console.log('API_KEY exists:', !!apiKey);
+
+    if (!apiKey) {
       return NextResponse.json(
-        { error: 'Date, latitude, and longitude are required' },
+        { error: 'API key not configured' },
+        { status: 500 }
+      );
+    }
+
+    // Extrair dados do body
+    const { date, latitude, longitude } = body;
+
+    // Validar dados obrigatórios
+    if (!date || !latitude || !longitude) {
+      console.log('Missing required data:', { date, latitude, longitude });
+      return NextResponse.json(
+        { error: 'Missing required data: date, latitude, or longitude' },
         { status: 400 }
       );
     }
 
-    const url = new URL(`${API_BASE_URL}/chart`);
-    
-    // Adiciona os parâmetros à URL - primeiro teste com timestamp Unix
-    url.searchParams.append('date', date.toString());
-    url.searchParams.append('lat', latitude.toString());
-    url.searchParams.append('lng', longitude.toString());
-    url.searchParams.append('planets', planets.join('|'));
-    // Removemos houses inicialmente já que sabemos que dá erro
-    // url.searchParams.append('houses', houses.join('|'));
-    url.searchParams.append('display', display.join('|'));
-    url.searchParams.append('language', language);
-    url.searchParams.append('key', API_KEY);
+    // Construir URL com TODOS os parâmetros necessários
+    const params = new URLSearchParams({
+      date: date.toString(),
+      lat: latitude.toString(),
+      lng: longitude.toString(),
+      planets: 'SUN|MOON|MERCURY|VENUS|MARS|JUPITER|SATURN|URANUS|NEPTUNE|PLUTO',
+      houses: 'equal', // ADICIONADO: parâmetro houses
+      display: 'longitude|latitude|sign|house',
+      language: 'pt',
+      key: apiKey
+    });
 
-    console.log('Calling Astrologico API:', url.toString().replace(API_KEY, 'HIDDEN'));
+    const url = `https://api.astrologico.org/v1/chart?${params.toString()}`;
+    console.log('Calling Astrologico API:', url.replace(apiKey, 'HIDDEN'));
 
-    let response = await fetch(url.toString(), {
-      method: 'GET',
+    // Fazer a requisição GET (não POST)
+    const response = await fetch(url, {
+      method: 'GET', // A API do Astrológico usa GET, não POST
       headers: {
-        'Content-Type': 'application/json',
-      },
+        'Accept': 'application/json',
+        'User-Agent': 'Mapa-Astral-App/1.0'
+      }
     });
 
     console.log('API Response status:', response.status);
 
-    // Se der erro, tenta com formato de data diferente
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('First attempt failed:', errorText);
-      
-      // Tenta converter timestamp para formato ISO
-      const isoDate = new Date(date * 1000).toISOString();
-      console.log('Trying with ISO date:', isoDate);
-      
-      url.searchParams.set('date', isoDate);
-      response = await fetch(url.toString(), {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (!response.ok) {
-        // Tenta com formato YYYY-MM-DD HH:MM:SS
-        const dateObj = new Date(date * 1000);
-        const formattedDate = dateObj.getUTCFullYear() + '-' + 
-                            String(dateObj.getUTCMonth() + 1).padStart(2, '0') + '-' + 
-                            String(dateObj.getUTCDate()).padStart(2, '0') + ' ' +
-                            String(dateObj.getUTCHours()).padStart(2, '0') + ':' +
-                            String(dateObj.getUTCMinutes()).padStart(2, '0') + ':' +
-                            String(dateObj.getUTCSeconds()).padStart(2, '0');
-        
-        console.log('Trying with formatted date:', formattedDate);
-        url.searchParams.set('date', formattedDate);
-        
-        response = await fetch(url.toString(), {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-      }
-    }
-
     if (!response.ok) {
       const errorText = await response.text();
       console.error('API Error Response:', errorText);
-      throw new Error(`API Error: ${response.status} - ${response.statusText} - ${errorText}`);
+      return NextResponse.json(
+        { error: `API returned ${response.status}: ${errorText}` },
+        { status: response.status }
+      );
     }
 
     const data = await response.json();
     console.log('API Response data keys:', Object.keys(data));
     console.log('API Response full data:', JSON.stringify(data, null, 2));
-    
-    return NextResponse.json(data);
+
+    // Verificar se a resposta tem a estrutura esperada
+    if (!data.planets) {
+      console.error('Invalid API response structure:', data);
+      return NextResponse.json(
+        { error: 'Invalid API response structure' },
+        { status: 500 }
+      );
+    }
+
+    // Verificar se todos os planetas têm erro
+    const planets = data.planets;
+    const hasErrors = Object.values(planets).every(planet => 
+      planet && typeof planet === 'object' && 'error' in planet
+    );
+
+    if (hasErrors) {
+      console.error('All planets returned errors:', planets);
+      // Ainda retorna os dados para debug, mas com aviso
+      return NextResponse.json({
+        data: {
+          planets: planets,
+          houses: data.houses || {},
+          date: date,
+          location: {
+            latitude: latitude,
+            longitude: longitude
+          },
+          metadata: data.metadata
+        },
+        status: 'ERROR_ALL_PLANETS',
+        cost: 0,
+        error: 'All planets returned errors - check API parameters'
+      });
+    }
+
+    // Formatar resposta de sucesso
+    const formattedResponse = {
+      data: {
+        planets: data.planets,
+        houses: data.houses || {},
+        date: date,
+        location: {
+          latitude: latitude,
+          longitude: longitude
+        },
+        metadata: data.metadata
+      },
+      status: data.status || 'OK',
+      cost: data.cost || 0
+    };
+
+    return NextResponse.json(formattedResponse);
+
   } catch (error) {
-    console.error('Error generating chart:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Chart API error:', error);
     return NextResponse.json(
-      { error: `Failed to generate chart: ${errorMessage}` },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
