@@ -60,10 +60,15 @@ export async function POST(req: NextRequest) {
           date: date.toString(),
           lat: latitude.toString(),
           lng: longitude.toString(),
-          planets: 'SUN,MOON,MERCURY,VENUS,MARS,JUPITER,SATURN,URANUS,NEPTUNE,PLUTO',
           display: 'longitude,sign,house',
           language: 'pt',
           key: apiKey
+        });
+
+        // CORREÇÃO: Adicionar planetas individualmente ao invés de como string
+        const planetList = ['SUN', 'MOON', 'MERCURY', 'VENUS', 'MARS', 'JUPITER', 'SATURN', 'URANUS', 'NEPTUNE', 'PLUTO'];
+        planetList.forEach(planet => {
+          baseParams.append('planets', planet);
         });
 
         // Adicionar parâmetro de sistema de casas
@@ -160,10 +165,15 @@ export async function POST(req: NextRequest) {
         date: date.toString(),
         lat: latitude.toString(),
         lng: longitude.toString(),
-        planets: 'SUN,MOON,MERCURY,VENUS,MARS,JUPITER,SATURN,URANUS,NEPTUNE,PLUTO',
         display: 'longitude,sign', // Remover 'house' do display quando não usar casas
         language: 'pt',
         key: apiKey
+      });
+
+      // CORREÇÃO: Adicionar planetas individualmente
+      const planetList = ['SUN', 'MOON', 'MERCURY', 'VENUS', 'MARS', 'JUPITER', 'SATURN', 'URANUS', 'NEPTUNE', 'PLUTO'];
+      planetList.forEach(planet => {
+        params.append('planets', planet);
       });
 
       const url = `https://api.astrologico.org/v1/chart?${params.toString()}`;
