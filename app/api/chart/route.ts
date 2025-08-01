@@ -1,4 +1,4 @@
-// api/chart/route.ts - Versão corrigida
+// api/chart/route.ts - Versão completa com houses=placidus
 
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -31,13 +31,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Construir URL com TODOS os parâmetros necessários
+    // Construir URL com houses=placidus
     const params = new URLSearchParams({
       date: date.toString(),
       lat: latitude.toString(),
       lng: longitude.toString(),
       planets: 'SUN|MOON|MERCURY|VENUS|MARS|JUPITER|SATURN|URANUS|NEPTUNE|PLUTO',
-      houses: 'equal', // ADICIONADO: parâmetro houses
+      houses: 'placidus',
       display: 'longitude|latitude|sign|house',
       language: 'pt',
       key: apiKey
@@ -46,9 +46,9 @@ export async function POST(req: NextRequest) {
     const url = `https://api.astrologico.org/v1/chart?${params.toString()}`;
     console.log('Calling Astrologico API:', url.replace(apiKey, 'HIDDEN'));
 
-    // Fazer a requisição GET (não POST)
+    // Fazer a requisição GET
     const response = await fetch(url, {
-      method: 'GET', // A API do Astrológico usa GET, não POST
+      method: 'GET',
       headers: {
         'Accept': 'application/json',
         'User-Agent': 'Mapa-Astral-App/1.0'
