@@ -2,12 +2,12 @@ import { useState, useCallback } from 'react';
 import AstrologicoApiService from '@/lib/astrologico-api';
 import { ChartFormData, ChartResponse, LocationApiResponse } from '@/types/astrologico';
 
-export const useAstrologico = (apiKey?: string) => {
+export const useAstrologico = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [chartData, setChartData] = useState<ChartResponse | null>(null);
 
-  const apiService = new AstrologicoApiService(apiKey);
+  const apiService = new AstrologicoApiService();
 
   const getLocationCoordinates = useCallback(async (locationName: string): Promise<LocationApiResponse | null> => {
     setLoading(true);
