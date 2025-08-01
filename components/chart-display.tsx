@@ -132,8 +132,8 @@ export default function ChartDisplay({ chartData, userName }: ChartDisplayProps)
                   );
                 }
                 
-                // Verifica se há erro na resposta da API
-                if (planetData.error) {
+                // Verifica se há erro na resposta da API (type-safe check)
+                if ('error' in planetData && planetData.error) {
                   return (
                     <div key={planetKey} className="p-4 border rounded-lg bg-red-50 dark:bg-red-950">
                       <p className="text-red-600">
