@@ -31,38 +31,45 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // CORREÇÃO 1: Sistemas de casas válidos baseados na documentação
-    const houseSystems = [
-      'placidus',
-      'koch', 
-      'equal',
-      'whole_sign',    // mudança: underline ao invés de hífen
-      'campanus',
-      'regiomontanus'
+    // CORREÇÃO: Tentar diferentes nomes de parâmetros para sistema de casas
+    const houseSystemParams = [
+      { param: 'houses', value: 'placidus' },
+      { param: 'houses', value: 'koch' },
+      { param: 'houses', value: 'equal' },
+      { param: 'houses', value: 'whole_sign' },
+      { param: 'houses', value: 'campanus' },
+      { param: 'houses', value: 'regiomontanus' },
+      // Tentar com parâmetro diferente
+      { param: 'house_system', value: 'placidus' },
+      { param: 'house_system', value: 'koch' },
+      { param: 'house_system', value: 'equal' },
+      { param: 'system', value: 'placidus' },
+      { param: 'system', value: 'koch' },
+      { param: 'system', value: 'equal' }
     ];
 
     let lastError = null;
     
-    // Tentar diferentes sistemas de casas
-    for (const houseSystem of houseSystems) {
+    // Tentar diferentes sistemas de casas com diferentes parâmetros
+    for (const { param, value } of houseSystemParams) {
       try {
-        console.log(`Tentando sistema de casas: ${houseSystem}`);
+        console.log(`Tentando ${param}=${value}`);
         
-        // CORREÇÃO 2: Parâmetros corrigidos baseados na análise
-        const params = new URLSearchParams({
+        // Construir parâmetros base
+        const baseParams = new URLSearchParams({
           date: date.toString(),
           lat: latitude.toString(),
           lng: longitude.toString(),
-          // CORREÇÃO 3: Usar vírgulas ao invés de pipes (|)
           planets: 'SUN,MOON,MERCURY,VENUS,MARS,JUPITER,SATURN,URANUS,NEPTUNE,PLUTO',
-          houses: houseSystem,
-          // CORREÇÃO 4: Simplificar display - remover 'latitude' que pode estar causando problemas
           display: 'longitude,sign,house',
           language: 'pt',
           key: apiKey
         });
 
-        const url = `https://api.astrologico.org/v1/chart?${params.toString()}`;
+        // Adicionar parâmetro de sistema de casas
+        baseParams.append(param, value);
+
+        const url = `https://api.astrologico.org/v1/chart?${baseParams.toString()}`;
         console.log('Calling Astrologico API:', url.replace(apiKey, 'HIDDEN'));
 
         const response = await fetch(url, {
@@ -71,37 +78,34 @@ export async function POST(req: NextRequest) {
             'Accept': 'application/json',
             'User-Agent': 'Mapa-Astral-App/1.0'
           },
-          // CORREÇÃO 5: Adicionar timeout
-          signal: AbortSignal.timeout(10000) // 10 segundos timeout
+          signal: AbortSignal.timeout(10000)
         });
 
-        console.log(`API Response status for ${houseSystem}:`, response.status);
+        console.log(`API Response status for ${param}=${value}:`, response.status);
 
         if (response.status === 400) {
           const errorText = await response.text();
-          console.log(`Sistema ${houseSystem} não aceito:`, errorText);
+          console.log(`Sistema ${param}=${value} não aceito:`, errorText);
           lastError = errorText;
-          continue; // Tenta próximo sistema
+          continue;
         }
 
         if (!response.ok) {
           const errorText = await response.text();
           console.error('API Error Response:', errorText);
           lastError = errorText;
-          continue; // Tenta próximo sistema ao invés de retornar erro
+          continue;
         }
 
         const data = await response.json();
-        console.log(`Sucesso com sistema ${houseSystem}!`);
+        console.log(`Sucesso com ${param}=${value}!`);
         console.log('API Response data keys:', Object.keys(data));
 
-        // CORREÇÃO 6: Melhor validação da estrutura da resposta
         if (!data || typeof data !== 'object') {
           console.error('Invalid API response structure:', data);
           continue;
         }
 
-        // Verificar se há dados de planetas
         const planets = data.planets || {};
         const hasValidPlanets = Object.keys(planets).length > 0;
 
@@ -110,7 +114,6 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        // Verificar se todos os planetas têm erro
         const planetErrors = Object.values(planets).filter(planet => 
           planet && typeof planet === 'object' && 'error' in planet
         );
@@ -119,11 +122,9 @@ export async function POST(req: NextRequest) {
 
         if (allPlanetsHaveErrors) {
           console.error('All planets returned errors:', planets);
-          // Continue tentando outros sistemas ao invés de retornar erro
           continue;
         }
 
-        // CORREÇÃO 7: Resposta de sucesso formatada corretamente
         const formattedResponse = {
           data: {
             planets: planets,
@@ -134,23 +135,24 @@ export async function POST(req: NextRequest) {
               longitude: longitude
             },
             metadata: data.metadata || {},
-            houseSystem: houseSystem
+            houseSystem: value,
+            houseParam: param
           },
           status: data.status || 'OK',
           cost: data.cost || 0
         };
 
-        console.log(`Sistema de casas ${houseSystem} funcionou perfeitamente!`);
+        console.log(`Sistema de casas ${param}=${value} funcionou perfeitamente!`);
         return NextResponse.json(formattedResponse);
 
       } catch (error) {
-        console.error(`Erro ao tentar sistema ${houseSystem}:`, error);
+        console.error(`Erro ao tentar ${param}=${value}:`, error);
         lastError = error instanceof Error ? error.message : 'Erro desconhecido';
         continue;
       }
     }
 
-    // CORREÇÃO 8: Tentativa final sem casas com parâmetros corrigidos
+    // Tentativa final sem casas
     console.error('Nenhum sistema de casas funcionou, tentando sem casas...');
     
     try {
@@ -159,7 +161,7 @@ export async function POST(req: NextRequest) {
         lat: latitude.toString(),
         lng: longitude.toString(),
         planets: 'SUN,MOON,MERCURY,VENUS,MARS,JUPITER,SATURN,URANUS,NEPTUNE,PLUTO',
-        display: 'longitude,sign', // Updated to remove 'house' from display
+        display: 'longitude,sign', // Remover 'house' do display quando não usar casas
         language: 'pt',
         key: apiKey
       });
@@ -180,7 +182,6 @@ export async function POST(req: NextRequest) {
         const data = await response.json();
         console.log('Sucesso sem sistema de casas!');
         
-        // Verificar se temos dados de planetas válidos
         const planets = data.planets || {};
         const hasValidPlanets = Object.keys(planets).length > 0;
         
@@ -191,7 +192,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
           data: {
             planets: planets,
-            houses: {}, // Vazio pois não foi solicitado
+            houses: {},
             date: date,
             location: {
               latitude: latitude,
@@ -213,18 +214,18 @@ export async function POST(req: NextRequest) {
       lastError = finalError instanceof Error ? finalError.message : 'Erro final desconhecido';
     }
 
-    // CORREÇÃO 10: Resposta de erro mais informativa
     return NextResponse.json(
       { 
         error: 'Falha ao gerar mapa astral com todos os sistemas tentados',
         details: {
           lastError: lastError,
-          triedSystems: houseSystems,
+          triedSystems: houseSystemParams.map(p => `${p.param}=${p.value}`),
           suggestions: [
             'Verifique se a API key está válida e ativa',
             'Confirme se as coordenadas estão corretas',
             'Verifique se a data está no formato UNIX timestamp correto',
-            'Tente com uma data e localização diferentes para teste'
+            'Tente com uma data e localização diferentes para teste',
+            'A API pode ter mudado os parâmetros aceitos para sistemas de casas'
           ]
         }
       },
