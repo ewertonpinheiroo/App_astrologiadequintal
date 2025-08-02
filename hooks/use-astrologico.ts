@@ -1,4 +1,4 @@
-// hooks/use-astrologico.ts - Versão com debug melhorado
+// hooks/use-astrologico.ts - Versão melhorada com tentativas alternativas
 import { useState, useCallback } from 'react';
 import AstrologicoApiService from '@/lib/astrologico-api';
 import { ChartFormData, ChartResponse, LocationApiResponse } from '@/types/astrologico';
@@ -71,11 +71,51 @@ export const useAstrologico = (apiKey?: string) => {
 
       console.log('Sending chart request with:', chartRequestData);
 
-      // Gera o mapa astral
-      const result = await apiService.generateChart(chartRequestData);
-      console.log('Chart generated successfully');
+      // MELHORIA: Primeiro tentar o método padrão
+      let result: ChartResponse | null = null;
+      
+      try {
+        result = await apiService.generateChart(chartRequestData);
+        
+        // Verificar se o resultado tem planetas válidos
+        if (result && result.data && result.data.planets) {
+          const validPlanets = Object.keys(result.data.planets).filter(
+            key => result!.data.planets[key] && !('error' in result!.data.planets[key])
+          );
+          
+          if (validPlanets.length === 0) {
+            console.log('No valid planets in standard response, trying alternatives...');
+            // Se não há planetas válidos, tentar métodos alternativos
+            result = await apiService.generateChartWithAlternatives(chartRequestData);
+          }
+        }
+      } catch (standardError) {
+        console.log('Standard method failed, trying alternatives:', standardError);
+        // Se o método padrão falhar, tentar alternativas
+        result = await apiService.generateChartWithAlternatives(chartRequestData);
+      }
+
+      if (!result) {
+        throw new Error('Não foi possível gerar o mapa astral com nenhum dos métodos disponíveis.');
+      }
+
+      // Verificação final
+      if (!result.data || !result.data.planets) {
+        throw new Error('Resposta da API não contém dados de planetas válidos.');
+      }
+
+      const validPlanets = Object.keys(result.data.planets).filter(
+        key => result.data.planets[key] && !('error' in result.data.planets[key])
+      );
+
+      if (validPlanets.length === 0) {
+        throw new Error('Nenhum planeta válido foi retornado pela API. Verifique os dados fornecidos.');
+      }
+
+      console.log('Chart generated successfully with', validPlanets.length, 'valid planets');
       setChartData(result);
       return result;
+      
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
       console.error('Chart generation error:', errorMessage);

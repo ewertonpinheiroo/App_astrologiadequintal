@@ -1,4 +1,4 @@
-// api/chart/route.ts - Versão corrigida com base nos problemas identificados
+// api/chart/route.ts - Versão corrigida baseada na análise dos logs
 
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -44,262 +44,190 @@ export async function POST(req: NextRequest) {
       minute: actualDate.getMinutes()
     });
 
-    // CORREÇÃO: Usar apenas o parâmetro que funciona (house_system)
-    const houseSystems = ['placidus', 'koch', 'equal', 'whole_sign', 'campanus', 'regiomontanus'];
+    // CORREÇÃO PRINCIPAL: Usar a URL correta da API
+    // A API do Astrológico espera parâmetros específicos
+    const params = new URLSearchParams({
+      // Data no formato timestamp Unix (em segundos)
+      date: date.toString(),
+      // Coordenadas
+      lat: latitude.toString(),
+      lng: longitude.toString(),
+      // Planetas separados por pipe (|) - formato correto
+      planets: 'SUN|MOON|MERCURY|VENUS|MARS|JUPITER|SATURN|URANUS|NEPTUNE|PLUTO',
+      // Sistema de casas
+      houses: 'equal',
+      // Campos a serem retornados
+      display: 'longitude|sign|house',
+      // Idioma
+      language: 'pt',
+      // Chave da API
+      key: apiKey
+    });
 
-    // CORREÇÃO: Tentar diferentes listas de planetas
-    const planetLists = [
-      ['SUN'], // Teste com apenas um planeta
-      ['sun'], // Teste com nome em minúsculo
-      ['Sun'], // Teste com primeira letra maiúscula
-      ['SUN', 'MOON', 'MERCURY', 'VENUS', 'MARS', 'JUPITER', 'SATURN'], // Apenas planetas tradicionais
-      ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn'], // Planetas em minúsculo
-      ['SUN', 'MOON', 'MERCURY', 'VENUS', 'MARS', 'JUPITER', 'SATURN', 'URANUS', 'NEPTUNE'], // Sem PLUTO
-      ['SUN', 'MOON', 'MERCURY', 'VENUS', 'MARS', 'JUPITER', 'SATURN', 'URANUS', 'NEPTUNE', 'PLUTO'] // Todos
-    ];
+    const url = `https://api.astrologico.org/v1/chart?${params.toString()}`;
+    console.log('Calling Astrologico API:', url.replace(apiKey, 'HIDDEN'));
 
-    // CORREÇÃO: Tentar diferentes formatos de envio de planetas
-    const planetFormats = [
-      { name: 'comma_separated', format: 'comma' },
-      { name: 'individual_params', format: 'individual' }
-    ];
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Mapa-Astral-App/1.0'
+      },
+      signal: AbortSignal.timeout(15000) // Timeout aumentado
+    });
 
-    for (const planetFormat of planetFormats) {
-      for (const planetList of planetLists) {
-        for (const houseSystem of houseSystems) {
-          try {
-            console.log(`Tentando house_system=${houseSystem} com planetas: ${planetList.join(',')} (formato: ${planetFormat.name})`);
-            
-            // Construir parâmetros base
-            const params = new URLSearchParams({
-              lat: latitude.toString(),
-              lng: longitude.toString(),
-              display: 'longitude,sign,house',
-              language: 'pt',
-              key: apiKey,
-              house_system: houseSystem
-            });
+    console.log('API Response status:', response.status);
 
-            // CORREÇÃO: Usar formato de data por componentes (que parece funcionar melhor)
-            params.set('year', actualDate.getFullYear().toString());
-            params.set('month', (actualDate.getMonth() + 1).toString());
-            params.set('day', actualDate.getDate().toString());
-            params.set('hour', actualDate.getHours().toString());
-            params.set('minute', actualDate.getMinutes().toString());
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API Error Response:', errorText);
+      
+      return NextResponse.json(
+        { 
+          error: `Erro na API do Astrológico: ${response.status}`,
+          details: errorText
+        },
+        { status: response.status }
+      );
+    }
 
-            // CORREÇÃO: Tentar diferentes formatos de planetas
-            if (planetFormat.format === 'comma') {
-              // Enviar como string separada por vírgula
-              params.set('planets', planetList.join(','));
-            } else {
-              // Enviar como parâmetros individuais
-              planetList.forEach(planet => {
-                params.append('planets', planet);
-              });
-            }
+    const data = await response.json();
+    console.log('API Response data:', JSON.stringify(data, null, 2));
 
-            const url = `https://api.astrologico.org/v1/chart?${params.toString()}`;
-            console.log('Calling Astrologico API:', url.replace(apiKey, 'HIDDEN'));
+    // Verificar se a resposta tem a estrutura esperada
+    if (!data || typeof data !== 'object') {
+      console.error('Invalid API response structure:', data);
+      return NextResponse.json(
+        { error: 'Resposta inválida da API do Astrológico' },
+        { status: 500 }
+      );
+    }
 
-            const response = await fetch(url, {
-              method: 'GET',
-              headers: {
-                'Accept': 'application/json',
-                'User-Agent': 'Mapa-Astral-App/1.0'
+    // Verificar se há planetas na resposta
+    const planets = data.planets || {};
+    console.log('Planets in response:', Object.keys(planets));
+
+    // Contar planetas válidos
+    const validPlanets = Object.entries(planets).filter(([planetName, planetData]) => {
+      if (!planetData || typeof planetData !== 'object') return false;
+      if ('error' in planetData) {
+        console.log(`Planeta ${planetName} com erro:`, planetData.error);
+        return false;
+      }
+      return true;
+    });
+
+    console.log(`Planetas válidos encontrados: ${validPlanets.length}/${Object.keys(planets).length}`);
+
+    // Se não há planetas válidos, tentar uma requisição alternativa
+    if (validPlanets.length === 0) {
+      console.log('Tentando com parâmetros alternativos...');
+      
+      // Tentar com apenas planetas clássicos
+      const alternativeParams = new URLSearchParams({
+        date: date.toString(),
+        lat: latitude.toString(),
+        lng: longitude.toString(),
+        planets: 'SUN|MOON|MERCURY|VENUS|MARS|JUPITER|SATURN', // Apenas planetas clássicos
+        houses: 'placidus', // Sistema de casas mais comum
+        display: 'longitude|sign|house',
+        language: 'pt',
+        key: apiKey
+      });
+
+      const alternativeUrl = `https://api.astrologico.org/v1/chart?${alternativeParams.toString()}`;
+      console.log('Alternative API call:', alternativeUrl.replace(apiKey, 'HIDDEN'));
+
+      const alternativeResponse = await fetch(alternativeUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Mapa-Astral-App/1.0'
+        },
+        signal: AbortSignal.timeout(15000)
+      });
+
+      if (alternativeResponse.ok) {
+        const alternativeData = await alternativeResponse.json();
+        console.log('Alternative API response:', JSON.stringify(alternativeData, null, 2));
+        
+        const altPlanets = alternativeData.planets || {};
+        const altValidPlanets = Object.entries(altPlanets).filter(([planetName, planetData]) => {
+          if (!planetData || typeof planetData !== 'object') return false;
+          if ('error' in planetData) return false;
+          return true;
+        });
+
+        if (altValidPlanets.length > 0) {
+          // Usar a resposta alternativa
+          console.log('Using alternative response with', altValidPlanets.length, 'valid planets');
+          const validPlanetsData: Record<string, any> = {};
+          altValidPlanets.forEach(([planetName, planetData]) => {
+            validPlanetsData[planetName] = planetData;
+          });
+
+          return NextResponse.json({
+            data: {
+              planets: validPlanetsData,
+              houses: alternativeData.houses || {},
+              date: date,
+              location: {
+                latitude: latitude,
+                longitude: longitude
               },
-              signal: AbortSignal.timeout(10000)
-            });
-
-            console.log(`API Response status for house_system=${houseSystem} (${planetFormat.name}):`, response.status);
-
-            if (!response.ok) {
-              const errorText = await response.text();
-              console.log(`Sistema house_system=${houseSystem} (${planetFormat.name}) não aceito:`, errorText);
-              continue;
-            }
-
-            const data = await response.json();
-            console.log(`Sucesso com house_system=${houseSystem} (${planetFormat.name})!`);
-            console.log('API Response data keys:', Object.keys(data));
-
-            if (!data || typeof data !== 'object') {
-              console.error('Invalid API response structure:', data);
-              continue;
-            }
-
-            const planets: Record<string, any> = data.planets || {};
-            console.log('Planets object structure:', JSON.stringify(planets, null, 2));
-
-            // Verificar se há planetas válidos
-            const validPlanets = Object.entries(planets).filter(([planetName, planetData]) => {
-              if (!planetData || typeof planetData !== 'object') return false;
-              if ('error' in planetData) {
-                console.log(`Planeta ${planetName} com erro:`, planetData.error);
-                return false;
-              }
-              return true;
-            });
-
-            console.log(`Planetas válidos encontrados: ${validPlanets.length}/${Object.keys(planets).length}`);
-
-            // Aceitar se pelo menos 1 planeta está válido (teste inicial)
-            if (validPlanets.length >= 1) {
-              const validPlanetsData: Record<string, any> = {};
-              validPlanets.forEach(([planetName, planetData]) => {
-                validPlanetsData[planetName] = planetData;
-              });
-
-              const planetErrors = Object.entries(planets)
-                .filter(([_, planetData]) => planetData && typeof planetData === 'object' && 'error' in planetData)
-                .map(([planetName, planetData]) => planetName);
-
-              const formattedResponse = {
-                data: {
-                  planets: validPlanetsData,
-                  houses: data.houses || {},
-                  date: date,
-                  location: {
-                    latitude: latitude,
-                    longitude: longitude
-                  },
-                  metadata: data.metadata || {},
-                  houseSystem: houseSystem
-                },
-                status: data.status || 'OK',
-                cost: data.cost || 0,
-                warning: planetErrors.length > 0 ? 
-                  `Alguns planetas não disponíveis: ${planetErrors.join(', ')}` : 
-                  undefined
-              };
-
-              console.log(`Sistema de casas house_system=${houseSystem} (${planetFormat.name}) funcionou!`);
-              console.log(`Planetas válidos: ${Object.keys(validPlanetsData).length}/${Object.keys(planets).length}`);
-              return NextResponse.json(formattedResponse);
-            } else {
-              console.log(`Não há planetas suficientes válidos para house_system=${houseSystem} (${planetFormat.name}): ${validPlanets.length}/${planetList.length}`);
-              continue;
-            }
-
-          } catch (error) {
-            console.error(`Erro ao tentar house_system=${houseSystem} (${planetFormat.name}):`, error);
-            continue;
-          }
-        }
-      }
-    }
-
-    // Tentativa final sem sistema de casas
-    console.log('Tentando sem sistema de casas...');
-    
-    for (const planetFormat of planetFormats) {
-      for (const planetList of planetLists) {
-        try {
-          console.log(`Tentativa final sem casas com planetas: ${planetList.join(',')} (formato: ${planetFormat.name})`);
-          
-          const params = new URLSearchParams({
-            lat: latitude.toString(),
-            lng: longitude.toString(),
-            display: 'longitude,sign', // Remover 'house' do display
-            language: 'pt',
-            key: apiKey
-          });
-
-          // Usar formato de data por componentes
-          params.set('year', actualDate.getFullYear().toString());
-          params.set('month', (actualDate.getMonth() + 1).toString());
-          params.set('day', actualDate.getDate().toString());
-          params.set('hour', actualDate.getHours().toString());
-          params.set('minute', actualDate.getMinutes().toString());
-
-          // CORREÇÃO: Tentar diferentes formatos de planetas
-          if (planetFormat.format === 'comma') {
-            // Enviar como string separada por vírgula
-            params.set('planets', planetList.join(','));
-          } else {
-            // Enviar como parâmetros individuais
-            planetList.forEach(planet => {
-              params.append('planets', planet);
-            });
-          }
-
-          const url = `https://api.astrologico.org/v1/chart?${params.toString()}`;
-          console.log('Tentativa final sem casas:', url.replace(apiKey, 'HIDDEN'));
-
-          const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-              'Accept': 'application/json',
-              'User-Agent': 'Mapa-Astral-App/1.0'
+              metadata: alternativeData.metadata || {},
+              houseSystem: 'placidus'
             },
-            signal: AbortSignal.timeout(10000)
+            status: alternativeData.status || 'OK',
+            cost: alternativeData.cost || 0,
+            warning: 'Usando apenas planetas clássicos devido a limitações da API'
           });
-
-          if (response.ok) {
-            const data = await response.json();
-            console.log('Sucesso sem sistema de casas!');
-            
-            const planets: Record<string, any> = data.planets || {};
-            console.log('Planets object structure (no houses):', JSON.stringify(planets, null, 2));
-
-            const validPlanets = Object.entries(planets).filter(([planetName, planetData]) => {
-              if (!planetData || typeof planetData !== 'object') return false;
-              if ('error' in planetData) {
-                console.log(`Planeta ${planetName} com erro:`, planetData.error);
-                return false;
-              }
-              return true;
-            });
-
-            if (validPlanets.length >= 1) {
-              const validPlanetsData: Record<string, any> = {};
-              validPlanets.forEach(([planetName, planetData]) => {
-                validPlanetsData[planetName] = planetData;
-              });
-
-              const planetErrors = Object.entries(planets)
-                .filter(([_, planetData]) => planetData && typeof planetData === 'object' && 'error' in planetData)
-                .map(([planetName, planetData]) => planetName);
-
-              return NextResponse.json({
-                data: {
-                  planets: validPlanetsData,
-                  houses: {},
-                  date: date,
-                  location: {
-                    latitude: latitude,
-                    longitude: longitude
-                  },
-                  metadata: data.metadata || {},
-                  houseSystem: 'none'
-                },
-                status: data.status || 'OK',
-                cost: data.cost || 0,
-                warning: planetErrors.length > 0 ? 
-                  `Executado sem sistema de casas. Alguns planetas não disponíveis: ${planetErrors.join(', ')}` : 
-                  'Executado sem sistema de casas'
-              });
-            } else {
-              console.log(`Não há planetas suficientes válidos sem casas (${planetFormat.name}): ${validPlanets.length}/${planetList.length}`);
-            }
-          } else {
-            const errorText = await response.text();
-            console.error(`Fallback attempt failed (${planetFormat.name}): ${response.status} - ${errorText}`);
-          }
-        } catch (finalError) {
-          console.error('Erro final sem casas:', finalError);
         }
       }
     }
 
+    // Se temos planetas válidos na resposta original
+    if (validPlanets.length > 0) {
+      const validPlanetsData: Record<string, any> = {};
+      validPlanets.forEach(([planetName, planetData]) => {
+        validPlanetsData[planetName] = planetData;
+      });
+
+      const planetErrors = Object.entries(planets)
+        .filter(([_, planetData]) => planetData && typeof planetData === 'object' && 'error' in planetData)
+        .map(([planetName, _]) => planetName);
+
+      return NextResponse.json({
+        data: {
+          planets: validPlanetsData,
+          houses: data.houses || {},
+          date: date,
+          location: {
+            latitude: latitude,
+            longitude: longitude
+          },
+          metadata: data.metadata || {},
+          houseSystem: 'equal'
+        },
+        status: data.status || 'OK',
+        cost: data.cost || 0,
+        warning: planetErrors.length > 0 ? 
+          `Alguns planetas não disponíveis: ${planetErrors.join(', ')}` : 
+          undefined
+      });
+    }
+
+    // Se chegou até aqui, não conseguiu obter dados válidos
     return NextResponse.json(
       { 
-        error: 'Falha ao gerar mapa astral',
+        error: 'Não foi possível obter dados válidos do mapa astral',
         details: {
+          apiResponse: data,
           suggestions: [
-            'Verifique se a API key está válida e ativa',
+            'Verifique se a data está no formato correto (timestamp Unix)',
             'Confirme se as coordenadas estão corretas',
-            'Verifique se a data está no formato UNIX timestamp correto',
-            'Tente com uma data e localização diferentes para teste'
+            'Verifique se a API key está válida e tem créditos suficientes',
+            'Tente com uma data mais recente (alguns APIs têm limitações históricas)'
           ]
         }
       },

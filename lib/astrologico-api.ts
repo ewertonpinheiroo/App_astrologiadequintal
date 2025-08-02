@@ -1,4 +1,4 @@
-// lib/astrologico-api.ts - Versão atualizada para usar rotas internas
+// lib/astrologico-api.ts - Versão corrigida com formatação de data adequada
 import { ChartFormData, LocationApiResponse, ChartResponse } from '@/types/astrologico';
 
 class AstrologicoApiService {
@@ -53,18 +53,28 @@ class AstrologicoApiService {
       longitude
     } = chartData;
 
-    // Converte a data para o formato esperado pela API
-    const date = new Date(birthDate);
-    const [hours, minutes] = birthTime.split(':');
-    date.setHours(parseInt(hours), parseInt(minutes));
+    // CORREÇÃO: Melhor tratamento da data e horário
+    // Criar a data no formato local primeiro
+    const [year, month, day] = birthDate.split('-').map(Number);
+    const [hours, minutes] = birthTime.split(':').map(Number);
+    
+    // Criar data no UTC para evitar problemas de timezone
+    const date = new Date(Date.UTC(year, month - 1, day, hours, minutes));
+    
+    console.log('Date processing:', {
+      input: { birthDate, birthTime },
+      parsed: { year, month: month - 1, day, hours, minutes },
+      utcDate: date.toISOString(),
+      timestamp: Math.floor(date.getTime() / 1000)
+    });
 
     const requestBody = {
-      // Data no formato timestamp Unix
+      // Data no formato timestamp Unix (em segundos)
       date: Math.floor(date.getTime() / 1000),
       // Coordenadas geográficas
       latitude: latitude,
       longitude: longitude,
-      // Planetas a serem incluídos no mapa
+      // Planetas a serem incluídos no mapa - usando formato pipe separado
       planets: [
         'SUN', 'MOON', 'MERCURY', 'VENUS', 'MARS', 
         'JUPITER', 'SATURN', 'URANUS', 'NEPTUNE', 'PLUTO'
@@ -77,10 +87,92 @@ class AstrologicoApiService {
       language: 'pt'
     };
 
+    console.log('Sending chart request:', requestBody);
+
     return await this.makeRequest<ChartResponse>('/chart', {
       method: 'POST',
       body: JSON.stringify(requestBody)
     });
+  }
+
+  // Método para testar diferentes formatos de data
+  async generateChartWithAlternatives(chartData: ChartFormData): Promise<ChartResponse> {
+    const {
+      birthDate,
+      birthTime,
+      latitude,
+      longitude
+    } = chartData;
+
+    // Tentar diferentes formatos de data
+    const dateFormats = this.generateDateFormats(birthDate, birthTime);
+    
+    for (const dateFormat of dateFormats) {
+      try {
+        console.log(`Tentando formato de data: ${dateFormat.description}`);
+        
+        const requestBody = {
+          date: dateFormat.timestamp,
+          latitude: latitude,
+          longitude: longitude,
+          planets: ['SUN', 'MOON', 'MERCURY', 'VENUS', 'MARS', 'JUPITER', 'SATURN'],
+          houses: ['equal'],
+          display: ['longitude', 'sign', 'house'],
+          language: 'pt'
+        };
+
+        const result = await this.makeRequest<ChartResponse>('/chart', {
+          method: 'POST',
+          body: JSON.stringify(requestBody)
+        });
+
+        // Se funcionou, retornar o resultado
+        if (result && result.data && result.data.planets) {
+          const validPlanets = Object.keys(result.data.planets).filter(
+            key => result.data.planets[key] && !('error' in result.data.planets[key])
+          );
+          
+          if (validPlanets.length > 0) {
+            console.log(`Sucesso com formato: ${dateFormat.description}`);
+            return result;
+          }
+        }
+      } catch (error) {
+        console.log(`Falhou com formato ${dateFormat.description}:`, error);
+        continue;
+      }
+    }
+
+    // Se nenhum formato funcionou, usar o padrão
+    return this.generateChart(chartData);
+  }
+
+  private generateDateFormats(birthDate: string, birthTime: string) {
+    const [year, month, day] = birthDate.split('-').map(Number);
+    const [hours, minutes] = birthTime.split(':').map(Number);
+
+    return [
+      // Formato 1: UTC
+      {
+        description: 'UTC format',
+        timestamp: Math.floor(new Date(Date.UTC(year, month - 1, day, hours, minutes)).getTime() / 1000)
+      },
+      // Formato 2: Local timezone
+      {
+        description: 'Local timezone',
+        timestamp: Math.floor(new Date(year, month - 1, day, hours, minutes).getTime() / 1000)
+      },
+      // Formato 3: Timezone do Brasil (GMT-3)
+      {
+        description: 'Brazil timezone (GMT-3)',
+        timestamp: Math.floor(new Date(Date.UTC(year, month - 1, day, hours + 3, minutes)).getTime() / 1000)
+      },
+      // Formato 4: Sem horário (meio-dia UTC)
+      {
+        description: 'Noon UTC',
+        timestamp: Math.floor(new Date(Date.UTC(year, month - 1, day, 12, 0)).getTime() / 1000)
+      }
+    ];
   }
 
   async validateApiKey(): Promise<boolean> {
