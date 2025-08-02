@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       // Planetas separados por pipe (|) - formato correto
       planets: 'SUN|MOON|MERCURY|VENUS|MARS|JUPITER|SATURN|URANUS|NEPTUNE|PLUTO',
       // Sistema de casas
-      houses: 'equal',
+      houses: body.houses ? body.houses[0].toString() : '16',
       // Campos a serem retornados
       display: 'longitude|sign|house',
       // Idioma
@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
         lat: latitude.toString(),
         lng: longitude.toString(),
         planets: 'SUN|MOON|MERCURY|VENUS|MARS|JUPITER|SATURN', // Apenas planetas clássicos
-        houses: 'placidus', // Sistema de casas mais comum
+        houses: body.houses ? body.houses[0].toString() : '16', // Sistema de casas mais comum
         display: 'longitude|sign|house',
         language: 'pt',
         key: apiKey
