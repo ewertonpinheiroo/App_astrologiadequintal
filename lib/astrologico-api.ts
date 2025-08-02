@@ -80,7 +80,7 @@ class AstrologicoApiService {
         'JUPITER', 'SATURN', 'URANUS', 'NEPTUNE', 'PLUTO'
       ],
       // Casas astrológicas
-      houses: ['equal'],
+      houses: [16],
       // Opções de exibição
       display: ['longitude', 'latitude', 'sign', 'house'],
       // Idioma
@@ -116,7 +116,7 @@ class AstrologicoApiService {
           latitude: latitude,
           longitude: longitude,
           planets: ['SUN', 'MOON', 'MERCURY', 'VENUS', 'MARS', 'JUPITER', 'SATURN'],
-          houses: ['equal'],
+          houses: [16],
           display: ['longitude', 'sign', 'house'],
           language: 'pt'
         };
