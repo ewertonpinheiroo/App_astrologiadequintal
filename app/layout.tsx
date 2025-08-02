@@ -1,8 +1,15 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+// 1. Importar a fonte Raleway em vez da Inter
+import { Raleway } from 'next/font/google'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'] })
+// 2. Configurar e instanciar a Raleway com os pesos desejados
+const raleway = Raleway({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-raleway', // Cria uma variável CSS para ser usada pelo Tailwind
+  weight: ['300', '400', '500', '700'] // Pesos que você planeja usar
+});
 
 export const metadata: Metadata = {
   title: 'Mapa Astral - Gerador de Mapas Astrológicos',
@@ -23,7 +30,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body className={inter.className}>{children}</body>
+      {/* 3. Aplicar a classe da nova fonte ao corpo da página */}
+      <body className={raleway.className}>{children}</body>
     </html>
   )
 }

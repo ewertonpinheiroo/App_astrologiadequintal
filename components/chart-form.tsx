@@ -44,13 +44,11 @@ export default function ChartForm({ onSubmit, loading }: ChartFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validação básica
     if (!formData.name || !formData.birthDate || !formData.birthTime || !formData.location) {
       alert('Por favor, preencha todos os campos obrigatórios.');
       return;
     }
 
-    // Verifica se as coordenadas foram obtidas
     if (!formData.latitude || !formData.longitude) {
       alert('Por favor, selecione uma localização válida da lista de sugestões.');
       return;
@@ -60,9 +58,11 @@ export default function ChartForm({ onSubmit, loading }: ChartFormProps) {
   };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
+    // O Card já herda os estilos corretos de bg-card e text-card-foreground
+    <Card className="w-full max-w-2xl mx-auto bg-card/80 backdrop-blur-sm border">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+        {/* TÍTULO CORRIGIDO: Removemos o gradiente e aplicamos a cor primária (marrom) */}
+        <CardTitle className="text-2xl font-bold text-primary">
           Gerador de Mapa Astral
         </CardTitle>
         <CardDescription>
@@ -84,7 +84,8 @@ export default function ChartForm({ onSubmit, loading }: ChartFormProps) {
               value={formData.name}
               onChange={handleInputChange}
               placeholder="Digite seu nome completo"
-              className="transition-all duration-200 focus:ring-2 focus:ring-purple-500"
+              // Foco do input corrigido para usar a cor do anel definida no CSS
+              className="transition-all duration-200 focus:ring-2 focus:ring-ring"
               required
             />
           </div>
@@ -101,7 +102,7 @@ export default function ChartForm({ onSubmit, loading }: ChartFormProps) {
               type="date"
               value={formData.birthDate}
               onChange={handleInputChange}
-              className="transition-all duration-200 focus:ring-2 focus:ring-purple-500"
+              className="transition-all duration-200 focus:ring-2 focus:ring-ring"
               required
             />
           </div>
@@ -118,7 +119,7 @@ export default function ChartForm({ onSubmit, loading }: ChartFormProps) {
               type="time"
               value={formData.birthTime}
               onChange={handleInputChange}
-              className="transition-all duration-200 focus:ring-2 focus:ring-purple-500"
+              className="transition-all duration-200 focus:ring-2 focus:ring-ring"
               required
             />
             <p className="text-sm text-muted-foreground">
@@ -135,17 +136,19 @@ export default function ChartForm({ onSubmit, loading }: ChartFormProps) {
             required
           />
 
-          {/* Informações de Debug (apenas para desenvolvimento) */}
+          {/* Informações de Debug (removido para um visual mais limpo) */}
+          {/* 
           {formData.latitude && formData.longitude && (
-            <div className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-800 p-2 rounded">
+            <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
               <strong>Coordenadas:</strong> {formData.latitude.toFixed(4)}, {formData.longitude.toFixed(4)}
             </div>
           )}
+          */}
 
-          {/* Botão de Submit */}
+          {/* BOTÃO DE SUBMIT CORRIGIDO: Usando as cores primárias (marrom e dourado) */}
           <Button 
             type="submit" 
-            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition-all duration-200 transform hover:scale-105"
+            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200 transform hover:scale-105"
             disabled={loading}
           >
             {loading ? (
