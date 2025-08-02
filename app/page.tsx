@@ -49,7 +49,7 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <Stars className="w-8 h-8 text-purple-600" />
               <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                Mapa Astral
+                Astrologia de quintal
               </h1>
             </div>
             {showResults && (
@@ -147,12 +147,12 @@ export default function Home() {
           <p className="text-gray-600 dark:text-gray-300">
             Powered by{' '}
             <a 
-              href="https://br.astrologico.org" 
+              href="https://agriculturaceleste.com" 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-purple-600 hover:underline"
             >
-              Astrológico API
+              Astrologia de quintal
             </a>
           </p>
         </div>
