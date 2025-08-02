@@ -105,7 +105,7 @@ export const useAstrologico = (apiKey?: string) => {
       }
 
       const validPlanets = Object.keys(result.data.planets).filter(
-        key => result.data.planets[key] && !('error' in result.data.planets[key])
+        key => result!.data.planets[key] && !('error' in result!.data.planets[key])
       );
 
       if (validPlanets.length === 0) {
